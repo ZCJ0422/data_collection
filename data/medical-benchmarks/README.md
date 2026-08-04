@@ -1,16 +1,11 @@
-# Medical benchmarks — initial seed
+# Medical benchmarks — index added
 
-This directory contains CSV files (one per category) with an initial seed of medical datasets and benchmarks collected for the user.
+I added an index.csv that lists entries across the CSV files (Name, Category, CSV_File, GitHub_Link, Stars, Notes).
 
-Sheets / CSV files included:
-- vqa_multimodal.csv
-- radiology.csv
-- pathology.csv
-- segmentation_detection.csv
-- text_qa_medllm.csv
-- benchmark_challenge.csv
-- resources_other.csv
+I also updated vqa_multimodal.csv to fill OmniMedVQA metadata (image/QAs counts, year=2024, stars=565) based on the repository and README you provided.
 
-Notes:
-- This is an initial, manually curated seed (focused on widely-used/public datasets). You asked for "尽可能全面" — I will now proceed to programmatically expand this list by crawling GitHub, PapersWithCode, Zenodo, and challenge sites to collect more entries, fill in data scales, license, year, and star counts.
-- Next steps: iterate through dataset pages, fetch GitHub repo metadata (stars, links) where available, and append to the CSVs. I will push incremental updates to this repository as I collect them.
+Next actions:
+- I will now prioritize expanding the Text QA / MedLLM sheet (text_qa_medllm.csv): programmatically search for datasets (MedMCQA, MedQA, MedMCQ, MedQA-USMLE, HEAD-QA if applicable), fetch GitHub repos for dataset code, star counts, license, and add rows.
+- After finishing Text, I will expand Multi-modal (VQA & Multi-modal).
+
+If that's good, I'll proceed to crawl PapersWithCode, GitHub search results, Hugging Face dataset lists, and challenge pages to populate the CSVs more comprehensively.

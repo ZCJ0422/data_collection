@@ -1,0 +1,11 @@
+Name,Category,CSV_File,GitHub_Link,Stars,Notes
+OmniMedVQA,VQA & Multi-modal,data/medical-benchmarks/vqa_multimodal.csv,https://github.com/OpenGVLab/Multi-Modality-Arena#omnimedvqa-a-new-large-scale-comprehensive-evaluation-benchmark-for-medical-lvlm,565,OmniMedVQA dataset (HuggingFace mirror available)
+VQA-RAD,VQA & Multi-modal,data/medical-benchmarks/vqa_multimodal.csv,https://paperswithcode.com/dataset/vqa-rad,,
+ImageCLEF VQA-Med,VQA & Multi-modal,data/medical-benchmarks/vqa_multimodal.csv,https://www.imageclef.org/,,Annual challenge, multiple years
+PathVQA,Pathology,data/medical-benchmarks/pathology.csv,https://paperswithcode.com/dataset/pathvqa,,Pathology VQA
+MIMIC-CXR,Radiology,data/medical-benchmarks/radiology.csv,https://physionet.org/content/mimic-cxr/2.0.0/,,Requires DUA
+ChestX-ray14,Radiology,data/medical-benchmarks/radiology.csv,https://nihcc.app.box.com/v/ChestXray-NIHCC,,NIH dataset
+MultiMedQA,Text QA / MedLLM,data/medical-benchmarks/text_qa_medllm.csv,https://paperswithcode.com/dataset/multimedqa,,Aggregated benchmark
+MedQA,Text QA / MedLLM,data/medical-benchmarks/text_qa_medllm.csv,https://paperswithcode.com/dataset/medqa,,NMLE-style QA
+PubMedQA,Text QA / MedLLM,data/medical-benchmarks/text_qa_medllm.csv,https://paperswithcode.com/dataset/pubmedqa,,PubMed abstracts QA
+RadGraph,Information Extraction,data/medical-benchmarks/radiology.csv,https://radgraph.org/,,Structured report annotations
