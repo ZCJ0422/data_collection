@@ -2,19 +2,31 @@
 set -euo pipefail
 
 # scripts/download_med_qa_datasets.sh
-# Batch download helper for medical QA datasets referenced in data/medical-benchmarks/text_qa_medllm.csv
+# Enhanced batch download helper for medical QA datasets referenced in
+# data/medical-benchmarks/text_qa_medllm.csv
+# Features:
+#  - Parallel downloads (configurable concurrency)
+#  - Robust retries
+#  - SHA256 checksum generation and optional verification
+#  - Logging
 # Usage: bash scripts/download_med_qa_datasets.sh [dataset_name|all]
-# Examples: bash scripts/download_med_qa_datasets.sh OmniMedVQA
-#           bash scripts/download_med_qa_datasets.sh all
+# Examples:
+#   bash scripts/download_med_qa_datasets.sh OmniMedVQA
+#   bash scripts/download_med_qa_datasets.sh all
 
 WORKDIR="data/datasets"
-mkdir -p "$WORKDIR"
-CPU_JOBS=4
+LOGDIR="logs/downloads"
+mkdir -p "$WORKDIR" "$LOGDIR"
+CONCURRENCY=${CONCURRENCY:-4}   # number of concurrent download jobs (export to override)
+RETRY_MAX=${RETRY_MAX:-5}
+RETRY_DELAY=${RETRY_DELAY:-5}
+WGET_OPTS="-c --tries=3 --timeout=30"
 
+# Simple retry wrapper
 retry_cmd() {
   local n=0
-  local max=5
-  local delay=5
+  local max=${RETRY_MAX}
+  local delay=${RETRY_DELAY}
   while true; do
     "$@" && return 0 || {
       n=$((n+1))
@@ -28,99 +40,182 @@ retry_cmd() {
   done
 }
 
+# Download a single URL to an output file, generate sha256, optionally verify expected sha
+# args: url out_path [expected_sha]
+dl_and_sha() {
+  local url="$1"
+  local out="$2"
+  local expected_sha="${3:-}"
+  local logfile="$LOGDIR/$(basename "$out").log"
+
+  echo "Downloading $url -> $out"
+  mkdir -p "$(dirname "$out")"
+
+  retry_cmd wget $WGET_OPTS -O "$out" "$url" 2>"$logfile" || {
+    echo "Download failed for $url (see $logfile)" >&2
+    return 1
+  }
+
+  # compute sha256 and save
+  sha256sum "$out" >"${out}.sha256"
+  echo "SHA256 written to ${out}.sha256"
+
+  if [ -n "$expected_sha" ]; then
+    local got
+    got=$(cut -d' ' -f1 "${out}.sha256")
+    if [ "$got" != "$expected_sha" ]; then
+      echo "SHA mismatch for $out: expected $expected_sha but got $got" >&2
+      return 2
+    else
+      echo "SHA verified for $out"
+    fi
+  fi
+}
+
+# Run a command in background, but limit concurrent jobs to $CONCURRENCY
+# args: command...
+job_pids=()
+job_count=0
+run_background() {
+  local cmd=("$@")
+  ("${cmd[@]}") &
+  job_pids+=("$!")
+  job_count=$((job_count+1))
+  # wait when reaching concurrency
+  while [ "${#job_pids[@]}" -ge "$CONCURRENCY" ]; do
+    # wait for first job
+    wait "${job_pids[0]}" || true
+    # remove the first pid
+    job_pids=("${job_pids[@]:1}")
+  done
+}
+
+wait_for_jobs() {
+  for pid in "${job_pids[@]}"; do
+    wait "$pid" || true
+  done
+  job_pids=()
+}
+
 check_license() {
-  # Check LICENSE in repo (if exists) via raw.githubusercontent
-  local owner_repo="$1" # format owner/repo
+  local owner_repo="$1"
   local raw_url="https://raw.githubusercontent.com/${owner_repo}/main/LICENSE"
-  echo "--- LICENSE for ${owner_repo} ---"
-  curl -fsSL "$raw_url" || echo "LICENSE not found at $raw_url; check repo webpage"
+  printf "--- LICENSE for %s ---\n" "$owner_repo"
+  if curl -fsSL "$raw_url" -o /dev/null; then
+    curl -fsSL "$raw_url" | sed -n '1,120p'
+  else
+    echo "LICENSE not found at $raw_url; check repo webpage"
+  fi
   echo
 }
 
-# 1) OmniMedVQA (HuggingFace or OpenDataLab) - multi-modality VQA (large: images + annotations)
+# Dataset-specific helpers
+
+# OmniMedVQA: use HuggingFace datasets library (recommended)
 download_OmniMedVQA() {
-  echo "Downloading OmniMedVQA into $WORKDIR/OmniMedVQA (HuggingFace datasets API)"
+  echo "Downloading OmniMedVQA via HuggingFace datasets API into $WORKDIR/OmniMedVQA"
   python - <<'PY'
 from datasets import load_dataset
-print('This will download OmniMedVQA via HuggingFace datasets API. Ensure you have enough disk and network.')
+print('Ensure you have enough disk and network. This may take a long time for images.')
 ds = load_dataset('foreverbeliever/OmniMedVQA')
 ds.save_to_disk('data/datasets/OmniMedVQA')
 PY
-  echo "If HuggingFace is unavailable or dataset host requires manual steps, visit: https://openxlab.org.cn/datasets/GMAI/OmniMedVQA or the OpenGVLab README for Google Drive/Baidu links."
-  echo "License: check dataset card on HuggingFace and OpenDataLab page before using."
+  # Optionally tar the directory and compute checksum
+  if [ -d "$WORKDIR/OmniMedVQA" ]; then
+    tar -C "$WORKDIR" -czf "$WORKDIR/OmniMedVQA.tar.gz" OmniMedVQA
+    sha256sum "$WORKDIR/OmniMedVQA.tar.gz" >"$WORKDIR/OmniMedVQA.tar.gz.sha256"
+    echo "OmniMedVQA archived + sha256 written"
+  fi
+  echo "If HuggingFace is not suitable, manual download instructions: https://openxlab.org.cn/datasets/GMAI/OmniMedVQA and OpenGVLab README."
 }
 
-# 2) MedMCQA (git repo)
+# MedMCQA: clone repo and follow README
 download_MedMCQA() {
-  echo "Cloning MedMCQA repo into $WORKDIR/medmcqa"
-  retry_cmd git clone https://github.com/medmcqa/medmcqa.git "$WORKDIR/medmcqa"
-  echo "Check $WORKDIR/medmcqa/README.md for data download steps and links."
+  local dest="$WORKDIR/medmcqa"
+  if [ -d "$dest" ]; then echo "$dest exists, skipping git clone"; else
+    retry_cmd git clone https://github.com/medmcqa/medmcqa.git "$dest"
+  fi
   check_license "medmcqa/medmcqa"
+  echo "Inspect $dest/README.md for download links. If a direct archive URL is available, use the 'download_url' pattern with dl_and_sha for checksum."
 }
 
-# 3) PubMedQA (git repo)
+# PubMedQA
 download_PubMedQA() {
-  echo "Cloning PubMedQA repo into $WORKDIR/pubmedqa"
-  retry_cmd git clone https://github.com/pubmedqa/pubmedqa.git "$WORKDIR/pubmedqa"
-  echo "See README or data/ directory for provided files."
+  local dest="$WORKDIR/pubmedqa"
+  if [ -d "$dest" ]; then echo "$dest exists, skipping git clone"; else
+    retry_cmd git clone https://github.com/pubmedqa/pubmedqa.git "$dest"
+  fi
   check_license "pubmedqa/pubmedqa"
 }
 
-# 4) MedQA (PapersWithCode/original sources)
+# MedQA
 download_MedQA() {
-  echo "MedQA is commonly obtained via original paper links. Example implementation repos exist (e.g., jind11/MedQA)."
-  echo "Clone an implementation to inspect download scripts:"
-  retry_cmd git clone https://github.com/jind11/MedQA.git "$WORKDIR/MedQA_impl"
-  echo "Open the implementation README for dataset acquisition instructions."
+  local impl_dest="$WORKDIR/MedQA_impl"
+  if [ -d "$impl_dest" ]; then echo "$impl_dest exists, skipping git clone"; else
+    retry_cmd git clone https://github.com/jind11/MedQA.git "$impl_dest"
+  fi
+  echo "Follow implementation README to acquire the dataset. Many implementations include scripts like scripts/download.sh"
 }
 
-# 5) MultiMedQA (aggregator)
+# MultiMedQA: aggregator advice
 download_MultiMedQA() {
-  echo "MultiMedQA aggregates multiple datasets. Visit PapersWithCode page to enumerate component datasets."
-  echo "URL: https://paperswithcode.com/dataset/multimedqa"
-  echo "Recommended: manually follow links on the PapersWithCode page and run the per-dataset download scripts."
+  echo "MultiMedQA is an aggregator. Please visit: https://paperswithcode.com/dataset/multimedqa"
+  echo "Script does NOT automatically fetch all subdatasets — follow the PW page and use per-dataset download scripts."
 }
 
-# 6) MedMCQ (PapersWithCode / original)
+# MedMCQ
 download_MedMCQ() {
-  echo "MedMCQ: follow PapersWithCode page to original source(s): https://paperswithcode.com/dataset/medmcq"
+  echo "MedMCQ: follow PapersWithCode page https://paperswithcode.com/dataset/medmcq to get original sources and download scripts."
 }
 
-# 7) HEAD-QA (project page / repo)
+# HEAD-QA
 download_HEADQA() {
-  echo "Cloning HEAD-QA into $WORKDIR/head-qa"
-  retry_cmd git clone https://github.com/aghie/head-qa.git "$WORKDIR/head-qa"
-  echo "Data download links and instructions on project page: https://aghie.github.io/head-qa/"
+  local dest="$WORKDIR/head-qa"
+  if [ -d "$dest" ]; then echo "$dest exists, skipping git clone"; else
+    retry_cmd git clone https://github.com/aghie/head-qa.git "$dest"
+  fi
   check_license "aghie/head-qa"
+  # Example: If project provides a tarball URL, user can uncomment and set URL
+  # run_background dl_and_sha "<tarball_url>" "$WORKDIR/head-qa/headqa.tar.gz"
 }
 
-# 8) MIRIAD (may be HF or repo)
+# MIRIAD
 download_MIRIAD() {
-  echo "Attempting to load MIRIAD via HuggingFace datasets (if available)."
+  echo "Attempting to load MIRIAD via HuggingFace datasets API (if published there)."
   python - <<'PY'
-from datasets import list_datasets, load_dataset
+from datasets import load_dataset
 name = 'eth-medical-ai-lab/MIRIAD'
-print('Attempting to load', name)
 try:
     ds = load_dataset(name)
     ds.save_to_disk('data/datasets/MIRIAD')
+    print('Saved MIRIAD to data/datasets/MIRIAD')
 except Exception as e:
     print('HuggingFace load failed:', e)
     print('Please follow repo: https://github.com/eth-medical-ai-lab/MIRIAD for manual download instructions')
 PY
-  echo "MIRIAD is large (1M+); ensure disk space and bandwidth."
   check_license "eth-medical-ai-lab/MIRIAD"
 }
 
-# 9) MedQA-Relabeled (Google-Health annotations)
+# MedQA-Relabeled
 download_MedQA_Relabeled() {
-  echo "Cloning MedQA relabelling repo into $WORKDIR/medqa_relabeled"
-  retry_cmd git clone https://github.com/Google-Health/med-gemini-medqa-relabelling.git "$WORKDIR/medqa_relabeled"
+  local dest="$WORKDIR/medqa_relabeled"
+  if [ -d "$dest" ]; then echo "$dest exists, skipping git clone"; else
+    retry_cmd git clone https://github.com/Google-Health/med-gemini-medqa-relabelling.git "$dest"
+  fi
   check_license "Google-Health/med-gemini-medqa-relabelling"
+}
+
+# Helper that demonstrates how to download an archive URL in parallel with checksum
+# Example usage: queue_archive_download "https://example.com/file.zip" "data/datasets/example/file.zip"
+queue_archive_download() {
+  local url="$1"
+  local out="$2"
+  run_background dl_and_sha "$url" "$out"
 }
 
 print_usage() {
   echo "Usage: $0 [OmniMedVQA|MedMCQA|PubMedQA|MedQA|MultiMedQA|MedMCQ|HEAD-QA|MIRIAD|MedQA-Relabeled|all]"
+  echo "Environment variables: CONCURRENCY (default $CONCURRENCY), RETRY_MAX (default $RETRY_MAX)"
 }
 
 MAIN_ARG="${1:-all}"
@@ -135,17 +230,18 @@ case "$MAIN_ARG" in
   MIRIAD) download_MIRIAD ;; 
   MedQA-Relabeled) download_MedQA_Relabeled ;; 
   all)
-    download_OmniMedVQA
-    download_MedMCQA
-    download_PubMedQA
-    download_MedQA
-    download_MultiMedQA
-    download_MedMCQ
-    download_HEADQA
-    download_MIRIAD
-    download_MedQA_Relabeled
+    download_OmniMedVQA &
+    download_MedMCQA &
+    download_PubMedQA &
+    download_MedQA &
+    download_MultiMedQA &
+    download_MedMCQ &
+    download_HEADQA &
+    download_MIRIAD &
+    download_MedQA_Relabeled &
+    wait
     ;;
   *) print_usage; exit 1 ;;
 esac
 
-echo "Done. Please verify LICENSE and data usage terms for each dataset before reuse."
+echo "Done. Check $LOGDIR for per-file logs. Remember to verify dataset licenses before reuse." 
