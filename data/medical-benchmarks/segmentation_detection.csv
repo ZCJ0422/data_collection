@@ -1,0 +1,3 @@
+Name,GitHub_Link,Description,Task,Modality,Data_Scale,License,Paper_or_Dataset_Link,Year,Stars,Notes
+LUNA16,https://luna16.grand-challenge.org/,"LUNA16: lung nodule detection benchmark (CT)",Detection / Segmentation,CT,Varies,TBD,https://luna16.grand-challenge.org/, , ,
+PROMISE12,https://promise12.grand-challenge.org/,"PROMISE12: prostate MR segmentation challenge",Segmentation,MRI,Varies,TBD,https://promise12.grand-challenge.org/, , ,

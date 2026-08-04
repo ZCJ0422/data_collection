@@ -1,0 +1,4 @@
+Name,GitHub_Link,Description,Task,Modality,Data_Scale,License,Paper_or_Dataset_Link,Year,Stars,Notes
+ImageCLEF VQA-Med,https://www.imageclef.org/,"ImageCLEF VQA-Med: annual medical VQA challenge (multiple years)",Benchmark / Challenge,Multi-modal (images + text),Varies,TBD,https://www.imageclef.org/, , ,
+MICCAI Challenges,https://www.miccai.org/,"MICCAI: multiple medical imaging challenges and leaderboards",Benchmark / Challenge,Varies,Varies,TBD,https://www.miccai.org/, , ,
+RSNA Challenges,https://www.rsna.org/,"RSNA: radiology society challenges (detection/classification/segmentation)",Benchmark / Challenge,Radiology,Varies,TBD,https://www.rsna.org/, , ,

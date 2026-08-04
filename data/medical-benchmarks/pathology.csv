@@ -1,0 +1,4 @@
+Name,GitHub_Link,Description,Task,Modality,Data_Scale,License,Paper_or_Dataset_Link,Year,Stars,Notes
+PathVQA,https://paperswithcode.com/dataset/pathvqa,"PathVQA: VQA dataset on pathology images",VQA,Pathology (WSI / slides),~4k QA pairs,TBD,https://paperswithcode.com/dataset/pathvqa, , ,
+Camelyon16,https://camelyon16.grand-challenge.org/,"Camelyon16: lymph node metastasis detection in whole-slide images (challenge)",Detection / Segmentation,Pathology (WSI),Thousands of slides,TBD,https://camelyon16.grand-challenge.org/, , ,
+PAIP2020,https://paip2020.grand-challenge.org/,"PAIP: Pathology AI Platform challenge (liver cancer segmentation)",Segmentation,Pathology (WSI),Varies,TBD,https://paip2020.grand-challenge.org/, , ,

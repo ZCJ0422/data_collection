@@ -1,0 +1,6 @@
+Name,GitHub_Link,Description,Task,Modality,Data_Scale,License,Paper_or_Dataset_Link,Year,Stars,Notes
+MIMIC-CXR,https://physionet.org/content/mimic-cxr/2.0.0/,"MIMIC-CXR: large chest x-ray dataset with free-text reports",Report generation / Retrieval,Chest X-ray + reports,>377k images,Restricted,https://physionet.org/content/mimic-cxr/2.0.0/, , ,Requires DUA
+ChestX-ray14,https://nihcc.app.box.com/v/ChestXray-NIHCC,"ChestX-ray14: NIH Chest X-ray dataset for classification/detection",Classification / Detection,Chest X-ray,~112k images,TBD,https://nihcc.app.box.com/v/ChestXray-NIHCC, , ,
+RSNA Pneumonia Detection (Kaggle),https://www.kaggle.com/c/rsna-pneumonia-detection-challenge,"RSNA Pneumonia Detection: Kaggle challenge dataset",Detection,Chest X-ray,Varies by year,TBD,https://www.kaggle.com/c/rsna-pneumonia-detection-challenge, , ,
+NIH ChestX-ray,https://www.nih.gov/,"NIH Chest X-ray public dataset (reference)",Classification / Detection,Chest X-ray,~100k images,TBD,https://nihcc.app.box.com/v/ChestXray-NIHCC, , ,
+MURA,https://stanfordmlgroup.github.io/competitions/mura/,"MURA: musculoskeletal radiograph dataset (Stanford)",Classification,Radiographs,~40k studies,TBD,https://stanfordmlgroup.github.io/competitions/mura/, , ,

@@ -1,0 +1,5 @@
+Name,GitHub_Link,Description,Task,Modality,Data_Scale,License,Paper_or_Dataset_Link,Year,Stars,Notes
+MultiMedQA,https://paperswithcode.com/dataset/multimedqa,"MultiMedQA: aggregated benchmark of medical question-answering datasets for LLM evaluation",Text QA / Med LLM,Text (MCQ & free-text),Aggregated,TBD,https://paperswithcode.com/dataset/multimedqa, , ,
+MedQA,https://paperswithcode.com/dataset/medqa,"MedQA: medical QA dataset (NMLE-style)",Text QA,Text (MCQ),~12k questions,TBD,https://paperswithcode.com/dataset/medqa, , ,
+MedMCQA,https://paperswithcode.com/dataset/medmcqa,"MedMCQA: multiple-choice medical QA dataset",Text QA,Text (MCQ),~194k questions,TBD,https://paperswithcode.com/dataset/medmcqa, , ,
+PubMedQA,https://paperswithcode.com/dataset/pubmedqa,"PubMedQA: biomedical QA dataset from PubMed abstracts",Text QA,Text (abstract-level),~1k labeled QA pairs,TBD,https://paperswithcode.com/dataset/pubmedqa, , ,
